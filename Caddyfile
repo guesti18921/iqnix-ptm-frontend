@@ -1,0 +1,21 @@
+{
+    admin off
+    auto_https off
+}
+
+:{$PORT:8080} {
+    root * /app/dist
+    encode gzip
+
+    @backend path /api /api/* /storage /storage/*
+    handle @backend {
+        reverse_proxy https://iqnix-ptm-backend-production.up.railway.app {
+            header_up Host iqnix-ptm-backend-production.up.railway.app
+        }
+    }
+
+    handle {
+        try_files {path} /index.html
+        file_server
+    }
+}
