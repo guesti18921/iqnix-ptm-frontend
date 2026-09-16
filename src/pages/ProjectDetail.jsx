@@ -200,7 +200,7 @@ export default function ProjectDetail() {
     const handleDownload = async (url, filename) => {
         try {
             const token = localStorage.getItem("token");
-            const response = await fetch(`http://127.0.0.1:8000/api${url}`, {
+            const response = await fetch(`/api${url}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             const blob = await response.blob();
