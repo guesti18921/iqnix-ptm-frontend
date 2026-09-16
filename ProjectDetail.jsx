@@ -198,18 +198,26 @@ export default function ProjectDetail() {
     };
 
     const handleDownload = async (url, filename) => {
+        setError("");
         try {
-            const token = localStorage.getItem("token");
-            const response = await fetch(`http://127.0.0.1:8000/api${url}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            const blob = await response.blob();
+            const response = await api.get(url, { responseType: "blob" });
+            const type = response.headers["content-type"] || response.data.type || "";
+            if (/json|text\/html/i.test(type)) {
+                throw new Error("Сервер вернул ответ вместо документа");
+            }
+            const objectUrl = URL.createObjectURL(response.data);
             const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
+            link.href = objectUrl;
             link.download = filename;
+            document.body.appendChild(link);
             link.click();
-        } catch {
-            setError("Ошибка скачивания документа");
+            link.remove();
+            setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+        } catch (err) {
+            const status = err.response?.status;
+            setError(status === 401
+                ? "Сессия истекла. Войдите снова."
+                : `Ошибка скачивания документа${status ? ` (HTTP ${status})` : ""}. Попробуйте ещё раз; при повторении проверьте логи backend.`);
         }
     };
 
@@ -488,7 +496,15 @@ export default function ProjectDetail() {
                         onFocus={() => setForm({ ...form, focusEnd: true })}
                         onBlur={() => setForm({ ...form, focusEnd: false })}
                         InputLabelProps={{ shrink: true }} sx={{ mb: 2 }} />
-                    <TextField label="Количество единиц" fullWidth type="number" value={form.quantity}
+                    <TextField
+                        label={form.resource_type === "employee" ? "Количество дней (упрощённый расчёт)" : "Количество единиц"}
+                        helperText={form.resource_type === "employee"
+                            ? (form.calculation_mode === "precise"
+                                ? "Стоимость считается по датам, понедельник–пятница. Количество здесь не используется."
+                                : "1 = один день по ставке месячная стоимость / 30. Даты не влияют на сумму.")
+                            : ""}
+                        disabled={form.resource_type === "employee" && form.calculation_mode === "precise"}
+                        fullWidth type="number" value={form.quantity}
                         onChange={(e) => setForm({ ...form, quantity: e.target.value })} sx={{ mb: 2 }} />
                     {canSeeMargin && (
                         <TextField label="Маржинальность (%)" fullWidth type="number" value={form.margin}
